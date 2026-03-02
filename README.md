@@ -4,9 +4,11 @@ A backend API that detects and unifies customer identities across multiple check
 
 Hosted Endpoint
 
-Base URL: https://bitespeed-identity-wqp5.onrender.com
+Base URL: https://bitespeed-tngy.onrender.com
 
-POST https://bitespeed-identity-wqp5.onrender.com/identify
+POST URL: https://bitespeed-tngy.onrender.com/identify
+
+GET URL: https://bitespeed-tngy.onrender.com/contacts
 
 Tech Stack
 
