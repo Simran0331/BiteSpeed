@@ -1,25 +1,184 @@
+Bitespeed Identity Reconciliation Service
+
+A backend API that detects and unifies customer identities across multiple checkouts—even when shoppers use different emails and/or phone numbers over time.
+
+Hosted Endpoint
+
+Base URL: https://bitespeed-identity-wqp5.onrender.com
+
+POST https://bitespeed-identity-wqp5.onrender.com/identify
+
+Tech Stack
+
+Runtime: Node.js + TypeScript
+
+Framework: Express.js
+
+ORM: Prisma (v7)
+
+Database: PostgreSQL (Supabase)
+
+Getting Started
+Prerequisites
+
+Node.js >= 20.19.0
+
+npm
+
+Installation
+# Clone the repository
+git clone <repo-url>
+cd projectpp
+
+# Install dependencies
+npm install
+
+# Create a .env file and set your database URL
+# DATABASE_URL="postgresql://user:password@host:5432/dbname"
+# If Supabase on 5432 fails, try the pooler port 6543:
+# DATABASE_URL="postgresql://postgres.<project-ref>:[password]@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
+
+# Generate Prisma client and sync schema to the DB
+npx prisma generate
+npx prisma db push
+Running the Server
+# Start (production)
+npm start
+
+# Start (development)
+npm run dev
+
+By default the server runs on http://localhost:5000. You can override this using the PORT environment variable.
+
+API Endpoints
+POST /identify
+
+Accepts contact details and returns the merged identity for that customer.
+
+Request Body (JSON):
+
+{
+  "email": "alex.chen@acme.io",
+  "phoneNumber": "9988776655"
+}
+
+Provide at least one of email or phoneNumber.
+
+You may send both together.
+
+Response (200 OK):
+
+{
+  "contact": {
+    "primaryContactId": 101,
+    "emails": ["alex.chen@acme.io", "a.chen@workmail.com"],
+    "phoneNumbers": ["9988776655", "8877665544"],
+    "secondaryContactIds": [202, 203]
+  }
+}
+
+primaryContactId: the chosen primary contact ID
+
+emails: all associated emails (primary email first)
+
+phoneNumbers: all associated phone numbers (primary phone first)
+
+secondaryContactIds: all linked secondary contact IDs
+
+GET /contacts
+
+Fetches every contact row currently stored.
+
+Response (200 OK):
+
+{
+  "count": 2,
+  "contacts": [
+    {
+      "id": 101,
+      "phoneNumber": "9988776655",
+      "email": "alex.chen@acme.io",
+      "linkedId": null,
+      "linkPrecedence": "primary",
+      "createdAt": "2026-03-02T08:20:00.267Z",
+      "updatedAt": "2026-03-02T08:20:00.267Z",
+      "deletedAt": null
+    },
+    {
+      "id": 202,
+      "phoneNumber": "8877665544",
+      "email": "a.chen@workmail.com",
+      "linkedId": 101,
+      "linkPrecedence": "secondary",
+      "createdAt": "2026-03-02T09:10:12.120Z",
+      "updatedAt": "2026-03-02T09:10:12.120Z",
+      "deletedAt": null
+    }
+  ]
+}
+How Identity Linking Works
+
+Brand-new customer
+If no record matches the provided email/phone, the service creates a new primary contact.
+
+Match found + new detail arrives
+If an existing contact matches by email or phone, but the request introduces a new email/phone, the service adds a secondary contact linked to the primary.
+
+Two identity groups become connected
+If a single request ties together two previously separate primaries (e.g., email matches one group and phone matches another), the newer primary is converted into a secondary and linked under the older primary.
+
+Database Schema
+Contact {
+  id              Int         Primary key, auto-increment
+  phoneNumber     String?     Optional phone number
+  email           String?     Optional email
+  linkedId        Int?        ID of the linked primary contact
+  linkPrecedence  String      "primary" or "secondary"
+  createdAt       DateTime    Auto-set on creation
+  updatedAt       DateTime    Auto-updated on modification
+  deletedAt       DateTime?   Soft delete timestamp
+}
+Project Structure
+├── prisma/
+│   └── schema.prisma          # PostgreSQL schema for Prisma
+├── prisma.config.ts           # Prisma CLI configuration
+├── src/
+│   ├── index.ts               # Express app bootstrap
+│   ├── lib/
+│   │   └── prisma.ts          # Prisma client setup (PrismaPg adapter)
+│   ├── routes/
+│   │   └── identify.ts        # POST /identify route
+│   └── services/
+│       └── contact.service.ts # Identity reconciliation logic
+├── package.json
+├── tsconfig.json
+└── .env                       # DATABASE_URL (not committed)
+Environment Variables
+Variable	Description	Default
+PORT	Port the server listens on	5000
+DATABASE_URL	PostgreSQL connection string (Supabase)	--
+GIVE ME README.MD CODE
 # Bitespeed Identity Reconciliation Service
 
-A backend web service that identifies and consolidates customer contact information across multiple purchases, even when different email addresses and phone numbers are used.
+A backend API that detects and unifies customer identities across multiple checkouts—even when shoppers use different email addresses and/or phone numbers over time.
 
 ## Hosted Endpoint
 
-> **Base URL:** `https://bitespeed-identity-wqp5.onrender.com`
->
-> **POST** `https://bitespeed-identity-wqp5.onrender.com/identify`
+- **Base URL:** `https://bitespeed-identity-wqp5.onrender.com`
+- **POST** `https://bitespeed-identity-wqp5.onrender.com/identify`
 
 ## Tech Stack
 
-- **Runtime:** Node.js with TypeScript
+- **Runtime:** Node.js + TypeScript
 - **Framework:** Express.js
 - **ORM:** Prisma (v7)
-- **Database:** PostgreSQL (hosted on Supabase)
+- **Database:** PostgreSQL (Supabase)
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js >= 20.19.0
+- Node.js **>= 20.19.0**
 - npm
 
 ### Installation
@@ -32,76 +191,73 @@ cd projectpp
 # Install dependencies
 npm install
 
-# Create a .env file with your database URL
+# Create a .env file and set your database URL
+# Example:
 # DATABASE_URL="postgresql://user:password@host:5432/dbname"
-# DATABASE_URL="postgresql://postgres.wlararpmmztaxxungeom:[password]@aws-1-ap-south-1.pooler.supabase.com:6543/postgres" (for supabase if 5432 not work thrn use 6543 )
+#
+# If Supabase on 5432 fails, try the pooler port 6543:
+# DATABASE_URL="postgresql://postgres.<project-ref>:[password]@aws-1-ap-south-1.pooler.supabase.com:6543/postgres"
 
-# Generate Prisma client and push schema to database
+# Generate Prisma client and sync schema to the DB
 npx prisma generate
 npx prisma db push
-```
-
-### Running the Server
-
-```bash
-# Start the server
+Running the Server
+# Start (production)
 npm start
 
-# Or use development mode
+# Start (development)
 npm run dev
-```
 
-The server starts on `http://localhost:3000` by default. Set the `PORT` environment variable to change this.
+The server runs on http://localhost:5000 by default. Set the PORT environment variable to change this.
 
-## API Endpoints
+API Endpoints
+POST /identify
 
-### `POST /identify`
+Accepts contact details and returns the merged identity for that customer.
 
-Receives contact information and returns a consolidated identity.
+Request Body (JSON):
 
-**Request Body (JSON):**
-
-```json
 {
-  "email": "example@domain.com",
-  "phoneNumber": "123456"
+  "email": "alex.chen@acme.io",
+  "phoneNumber": "9988776655"
 }
-```
 
-At least one of `email` or `phoneNumber` must be provided. Both can be provided together.
+Provide at least one of email or phoneNumber.
 
-**Response (200 OK):**
+You may send both together.
 
-```json
+Response (200 OK):
+
 {
   "contact": {
-    "primaryContatctId": 1,
-    "emails": ["lorraine@hillvalley.edu", "mcfly@hillvalley.edu"],
-    "phoneNumbers": ["123456"],
-    "secondaryContactIds": [23]
+    "primaryContactId": 101,
+    "emails": ["alex.chen@acme.io", "a.chen@workmail.com"],
+    "phoneNumbers": ["9988776655", "8877665544"],
+    "secondaryContactIds": [202, 203]
   }
 }
-```
 
-- `primaryContatctId`: ID of the primary contact
-- `emails`: All emails linked to this identity (primary contact's email first)
-- `phoneNumbers`: All phone numbers linked to this identity (primary contact's phone first)
-- `secondaryContactIds`: IDs of all secondary contacts
+primaryContactId: the chosen primary contact ID
 
-### `GET /contacts`
+emails: all associated emails (primary email first)
 
-Returns all contacts stored in the database.
+phoneNumbers: all associated phone numbers (primary phone first)
 
-**Response (200 OK):**
+secondaryContactIds: all linked secondary contact IDs
 
-```json
+GET /contacts
+
+Fetches every contact row currently stored.
+
+Response (200 OK):
+
 {
   "count": 2,
   "contacts": [
     {
-      "id": 1,
-      "phoneNumber": "123456",
-      "email": "lorraine@hillvalley.edu",
+      "id": 101,
+      "phoneNumber": "9988776655",
+      "email": "alex.chen@acme.io",
       "linkedId": null,
       "linkPrecedence": "primary",
       "createdAt": "2026-03-02T08:20:00.267Z",
@@ -110,17 +266,21 @@ Returns all contacts stored in the database.
     }
   ]
 }
-```
+How Identity Linking Works
 
-## How Identity Linking Works
+Brand-new customer
 
-1. **New customer:** If no existing contacts match the email or phone, a new primary contact is created.
-2. **Existing customer, new info:** If a match is found by email or phone but the request contains new information (a new email or phone), a secondary contact is created and linked to the primary.
-3. **Merging primaries:** If the request links two previously separate primary contacts (e.g., email matches one group and phone matches another), the newer primary is demoted to secondary and linked to the older primary.
+If no record matches the provided email/phone, the service creates a new primary contact.
 
-## Database Schema
+Match found + new detail arrives
 
-```
+If an existing contact matches by email or phone, but the request introduces a new email/phone, the service adds a secondary contact linked to the primary.
+
+Two identity groups become connected
+
+If a single request ties together two previously separate primaries (e.g., email matches one group and phone matches another), the newer primary is converted into a secondary and linked under the older primary.
+
+Database Schema
 Contact {
   id              Int         Primary key, auto-increment
   phoneNumber     String?     Optional phone number
@@ -131,30 +291,22 @@ Contact {
   updatedAt       DateTime    Auto-updated on modification
   deletedAt       DateTime?   Soft delete timestamp
 }
-```
-
-## Project Structure
-
-```
+Project Structure
 ├── prisma/
-│   └── schema.prisma          # Database schema (PostgreSQL)
+│   └── schema.prisma          # PostgreSQL schema for Prisma
 ├── prisma.config.ts           # Prisma CLI configuration
 ├── src/
-│   ├── index.ts               # Express app entry point
+│   ├── index.ts               # Express app bootstrap
 │   ├── lib/
-│   │   └── prisma.ts          # Prisma client instance (PrismaPg adapter)
+│   │   └── prisma.ts          # Prisma client setup (PrismaPg adapter)
 │   ├── routes/
 │   │   └── identify.ts        # POST /identify route
 │   └── services/
-│       └── contact.service.ts # Core reconciliation logic
+│       └── contact.service.ts # Identity reconciliation logic
 ├── package.json
 ├── tsconfig.json
 └── .env                       # DATABASE_URL (not committed)
-```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `PORT` | Server port | `3000` |
-| `DATABASE_URL` | PostgreSQL connection string (Supabase) | -- |
+Environment Variables
+Variable	Description	Default
+PORT	Port the server listens on	5000
+DATABASE_URL	PostgreSQL connection string (Supabase)	--
