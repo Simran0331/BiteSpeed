@@ -21,10 +21,14 @@ app.get("/contacts", async (_req, res) => {
 
 app.use("/identify", identifyRouter);
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+if (process.env.VERCEL !== "1") {
+  const server = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
 
-server.on("error", (err) => {
-  console.error("Server error:", err);
-});
+  server.on("error", (err) => {
+    console.error("Server error:", err);
+  });
+}
+
+export default app;
